@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Study Tracker</title>
+    <style>
+        li { margin-bottom: 10px; }
+        .countdown { font-weight: bold; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Study Tracker</h1>
+
+    <form action="/add" method="post">
+        <input type="text" name="subject" placeholder="Subject" required>
+        <input type="number" name="minutes" placeholder="Minutes" required>
+        <button type="submit">Add Session</button>
+    </form>
+
+    <h2>Sessions:</h2>
+    <ul>
+        {% for session in sessions %}
+        <li id="session-{{ session.id }}">
+            {{ session.subject }} —
+            <span class="countdown"
+                data-id="{{ session.id }}"
+                data-total="{{ session.total_seconds }}"
+                data-start="{{ session.start_time }}">
+                Loading...
+            </span>
+
+            <button class="pause-btn" data-id="{{ session.id }}">Pause</button>
+
+            <form action="/delete/{{ session.id }}" method="post" style="display:inline; margin-left:10px;">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+
+<script>
+const timers = {};
+
+document.querySelectorAll('.countdown').forEach(span => {
+    const id = span.dataset.id;
+    const total = parseInt(span.dataset.total);
+    const start = parseInt(span.dataset.start);
+    const paused = localStorage.getItem(`paused-${id}`) === "true";
+    const pausedSeconds = parseInt(localStorage.getItem(`remaining-${id}`)) || total;
+
+    let seconds = paused ? pausedSeconds : total - (Math.floor(Date.now() / 1000) - start);
+
+    function updateDisplay() {
+        if (seconds <= 0) {
+            span.textContent = "⏰ Time's up!";
+            clearInterval(timers[id]);
+            localStorage.removeItem(`paused-${id}`);
+            localStorage.removeItem(`remaining-${id}`);
+        } else {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            span.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }
+    }
+
+    timers[id] = setInterval(() => {
+        if (localStorage.getItem(`paused-${id}`) === "true") return;
+        seconds--;
+        localStorage.setItem(`remaining-${id}`, seconds);
+        updateDisplay();
+    }, 1000);
+
+    updateDisplay();
+});
+
+// Pause/Resume Logic
+document.querySelectorAll('.pause-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        const id = button.dataset.id;
+        const paused = localStorage.getItem(`paused-${id}`) === "true";
+
+        if (paused) {
+            localStorage.setItem(`paused-${id}`, "false");
+            button.textContent = "Pause";
+        } else {
+            localStorage.setItem(`paused-${id}`, "true");
+            button.textContent = "Resume";
+        }
+    });
+
+    const id = button.dataset.id;
+    if (localStorage.getItem(`paused-${id}`) === "true") {
+        button.textContent = "Resume";
+    }
+});
+</script>
+
+</body>
+</html>
